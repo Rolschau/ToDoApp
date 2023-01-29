@@ -1,8 +1,8 @@
 using System.Runtime.Serialization;
 
-namespace ToDoWebApi.Models
+namespace ToDoWebApi.BLL.Models
 {
-    public class ToDoDTO
+    public class ToDoDTO : ICloneable
     {
 
         [DataMember(Name = "id")]
@@ -15,6 +15,10 @@ namespace ToDoWebApi.Models
         public bool Done { get; set; }
 
         [DataMember(Name = "order")]
-        public int? Order { get; set; }
+        public int Order { get; set; }
+
+        public object Clone() {
+            return (ToDoDTO)MemberwiseClone();
+        }
     }
 }

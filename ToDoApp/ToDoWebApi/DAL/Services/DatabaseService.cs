@@ -1,17 +1,24 @@
-﻿using ToDoWebApi.Models;
+﻿using ToDoWebApi.BLL.Models;
 using Microsoft.Extensions.Options;
 using System.Linq;
 using Hanssens.Net;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using ToDoWebApi.DAL.Interfaces;
+using ToDoWebApi.DAL.Models;
+using ToDoWebApi.Controllers;
+using System.Reflection;
+using System.Diagnostics;
+using ToDoWebApi.BLL.Sorters;
 
-namespace ToDoWebApi.Services
+namespace ToDoWebApi.DAL.Services
 {
     public class DatabaseService : IDatabaseService
     {
+        private readonly ILogger<ToDoController> _logger;
         private readonly LocalStorage _localStorage;
 
-        public record struct ToDo(string? Id, string? Value, bool? Done, int? Order);
+        //public record struct ToDo(string? Id, string? Value, bool? Done, int? Order);
 
         /// <summary>
         /// Converts a ToDo DTO to a ToDo item. This separates the item format externally and internally toward storage.
@@ -25,32 +32,21 @@ namespace ToDoWebApi.Services
         /// </summary>
         /// <param name="toDo"></param>
         /// <returns>A ToDoDTO item matching the format used externally</returns>
-        private ToDoDTO Convert(ToDo toDo) => new() { Id = toDo.Id, Value = toDo.Value, Done = toDo.Done ?? false, Order = toDo.Order };
+        private ToDoDTO Convert(ToDo toDo) => new() { Id = toDo.Id, Value = toDo.Value, Done = toDo.Done, Order = toDo.Order };
 
         /// <summary>
         /// Gets a new id.
         /// <para>Note: Remember to check if the id exists at the destination, keep trying until success.</para>
         /// </summary>
         /// <returns>A string of current UTC ticks</returns>
-        private string GetNewId() => new DateTimeOffset().Ticks.ToString();
+        private string GetNewId() => DateTimeOffset.Now.Ticks.ToString();
 
 
         //public DatabaseService(IOptions<xxxDBSettings> xxxDBSettings)
-        public DatabaseService(ILocalStorageConfiguration localStorageConfiguration)
+        public DatabaseService(ILocalStorageConfiguration localStorageConfiguration, ILogger<ToDoController> logger)
         {
-            /*
-            // setup a configuration with encryption enabled (defaults to 'false')
-            // note that adding EncryptionSalt is optional, but recommended
-            if (localStorageConfiguration == default)
-                localStorageConfiguration = new LocalStorageConfiguration()
-                {
-                    EnableEncryption = true,
-                    EncryptionSalt = "todosalt",
-                    Filename = "todo"
-                    //ToDo: consider making a separate Filename per user id eg. SSO like IdentityServer4 (OAuth/OpenID protocols, ASP.NET Core).
-                };
-            */
-
+            _logger = logger;
+            
             // initialize LocalStorage with a password of your choice
             _localStorage = new LocalStorage(localStorageConfiguration, "todopassword");
         }
@@ -60,24 +56,49 @@ namespace ToDoWebApi.Services
         /// </summary>
         /// <param name="todo"></param>
         /// <returns></returns>
-        public Task<ToDoDTO> CreateAsync(ToDoDTO toDoDto) {
-            while (toDoDto.Id is null || _localStorage.Exists(toDoDto.Id))
-                toDoDto.Id = GetNewId();
-            _localStorage.Store(key: toDoDto.Id, instance: Convert(toDoDto));
+        public Task<ToDoDTO> CreateAsync(ToDoDTO toDoDTO)
+        {
+            while (toDoDTO.Id is null || _localStorage.Exists(toDoDTO.Id))
+                toDoDTO.Id = GetNewId();
+            _localStorage.Store(key: toDoDTO.Id, instance: Convert(toDoDTO));
 
-            return Task.FromResult(toDoDto);
+            return Task.FromResult((ToDoDTO)toDoDTO.Clone());
         }
 
         /// <summary>
         /// Return all todos from database.
         /// </summary>
         /// <returns></returns>
-        public Task<List<ToDoDTO>> GetAsync()
+        public Task<List<ToDoDTO>> GetAsync(bool excludeDone = false, bool sortDescending = false)
         {
             List<ToDoDTO> todos = new();
             foreach (string key in _localStorage.Keys())
-                todos.Add(Convert(_localStorage.Get<ToDo>(key)));
-            
+            {
+                var todo = Convert(_localStorage.Get<ToDo>(key));
+                if (excludeDone && todo.Done)
+                    continue;
+                todos.Add(todo);
+            }
+
+            {
+                Stopwatch stopWatch = new();
+                stopWatch.Start();
+                todos.Sort(new ToDoComparer());
+                stopWatch.Stop();
+                Console.WriteLine("Sorting with ToDoComparer took " + stopWatch.ElapsedTicks);
+            }
+
+            {
+                Stopwatch stopWatch = new();
+                stopWatch.Start();
+                if (sortDescending)
+                    todos = todos.OrderByDescending(x => x.Order).ToList();
+                else
+                    todos = todos.OrderBy(x => x.Order).ToList();
+                stopWatch.Stop();
+                Console.WriteLine("OrderBy took " + stopWatch.ElapsedTicks);
+            }
+
             return Task.FromResult(todos);
         }
 
@@ -93,7 +114,11 @@ namespace ToDoWebApi.Services
         /// </summary>
         /// <param name="toDoDTO"></param>
         /// <returns></returns>
-        public Task UpdateAsync(ToDoDTO toDoDTO) => Task.Factory.StartNew( () => _localStorage.Store(toDoDTO.Id, Convert(toDoDTO)));
+        public Task<ToDoDTO> UpdateAsync(ToDoDTO toDoDTO)
+        {
+            _localStorage.Store(toDoDTO.Id, Convert(toDoDTO));
+            return Task.FromResult(toDoDTO);
+        }
 
         /// <summary>
         /// Deletes a todo item with a specific id.
