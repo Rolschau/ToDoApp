@@ -1,8 +1,9 @@
 using System.Runtime.Serialization;
+using ToDoWebApi.BLL.Interfaces;
 
 namespace ToDoWebApi.BLL.Models
 {
-    public class ToDoDTO : ICloneable
+    public class ToDoDTO : IToDo, ICloneable
     {
 
         [DataMember(Name = "id")]

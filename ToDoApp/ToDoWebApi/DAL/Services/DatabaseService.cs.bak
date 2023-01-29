@@ -6,18 +6,9 @@ using ToDoWebApi.Controllers;
 using ToDoWebApi.BLL.Sorters;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using System.Diagnostics;
-using Microsoft.Extensions.Logging;
 
 namespace ToDoWebApi.DAL.Services
 {
-    // Version 1: 
-
-    // Version 2 (suggestions for changes): 
-    // "key" could be e.g. "todos" or maybe a UserID, that way "Query" is useable. https://github.com/hanssens/localstorage/issues/33
-    //_localStorage.Query<ToDo>("todos", (todo) => todo.Id = id); //where _id is a specific todo item id.
-    //_localStorage.Query<ToDo>("todos", (todo) => todo.Done = isDone); //where isDone
-
     public class DatabaseService : IDatabaseService
     {
         private readonly ILogger<ToDoController> _logger;
@@ -55,46 +46,18 @@ namespace ToDoWebApi.DAL.Services
 
         private void PersistRetry()
         {
-            int maxAttempts = 10;
-            int waitMilliseconds = 1000;
+            int maxAttempts = 5;
             for (int i = 1; i <= maxAttempts; i++)
             {
                 try
                 {
-                    if (_localStorage.Count == 0) return; //https://github.com/hanssens/localstorage/issues/17
                     _localStorage.Persist();
                 }
                 catch
                 {
-                    Thread.Sleep(waitMilliseconds);
+                    Thread.Sleep(500);
                     if (i == maxAttempts)
-                    {
-                        _logger.LogCritical("LocalStorage Persist failed to save the database after {milliseconds}ms", maxAttempts * waitMilliseconds);
                         throw;
-                    }
-                }
-            }
-        }
-
-        private void LoadRetry()
-        {
-            int maxAttempts = 10;
-            int waitMilliseconds = 1000;
-            for (int i = 1; i <= maxAttempts; i++)
-            {
-                try
-                {
-                    if (_localStorage.Count == 0) return; //https://github.com/hanssens/localstorage/issues/17
-                    _localStorage.Load();
-                }
-                catch
-                {
-                    Thread.Sleep(waitMilliseconds);
-                    if (i == maxAttempts)
-                    {
-                        _logger.LogCritical("LocalStorage Load failed to save the database after {milliseconds}ms", maxAttempts * waitMilliseconds);
-                        throw;
-                    }
                 }
             }
         }
@@ -104,44 +67,32 @@ namespace ToDoWebApi.DAL.Services
         /// </summary>
         /// <param name="todo"></param>
         /// <returns></returns>
-        public ToDoDTO Create(ToDoDTO toDoDTO)
+        public Task<ToDoDTO> CreateAsync(ToDoDTO toDoDTO)
         {
             while (toDoDTO.Id is null || _localStorage.Exists(toDoDTO.Id))
                 toDoDTO.Id = GetNewId();
             _localStorage.Store(key: toDoDTO.Id, instance: Convert(toDoDTO));
             PersistRetry();
-            _localStorage.Load();
-            return (ToDoDTO)toDoDTO.Clone();
+            return Task.FromResult((ToDoDTO)toDoDTO.Clone());
         }
 
         /// <summary>
         /// Return all todos from database.
         /// </summary>
         /// <returns></returns>
-        public List<ToDoDTO> Get(bool excludeDone = false)
+        public Task<List<ToDoDTO>> GetAsync(bool excludeDone = false)
         {
             List<ToDoDTO> todos = new();
-            //_localStorage.Load();
-            List<string> keys = _localStorage.Keys().ToList();
-            int removedKeysCount = keys.RemoveAll(key => key is null);
-            if (removedKeysCount > 0)
+            foreach (string key in _localStorage.Keys())
             {
-                _logger.LogError("LocalStorage has {removedKeysCount} empty keys, they will be skipped.", removedKeysCount);
-                _logger.LogError("Reload the local database to sanitize the sanitized, after quick actions.");
-                _localStorage.Load();
-            }
-            foreach (string key in keys)
-            {
-                //Bug: Når man trykker sortér mange gange, så fejler den i update...get "key is null"... ..debug det!!
-                var item = _localStorage.Get(key);
                 var todo = Convert(_localStorage.Get<ToDo>(key));
                 if (excludeDone && todo.Done)
                     continue;
                 todos.Add(todo);
             }
             todos.Sort(new ToDoComparer());
-
-            return todos;
+        
+            return Task.FromResult(todos);
         }
 
         /// <summary>
@@ -149,37 +100,18 @@ namespace ToDoWebApi.DAL.Services
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public ToDoDTO Get(string id)
-        {
-            _localStorage.Load();
-            return Convert(_localStorage.Get<ToDo>(key: id));
-        }
+        public Task<ToDoDTO> GetAsync(string id) => Task.FromResult(Convert(_localStorage.Get<ToDo>(key: id)));
 
         /// <summary>
         /// Updates (or creates if not found) a ToDo item in the database.
         /// </summary>
         /// <param name="toDoDTO"></param>
         /// <returns></returns>
-        public ToDoDTO Update(ToDoDTO toDoDTO)
+        public Task<ToDoDTO> UpdateAsync(ToDoDTO toDoDTO)
         {
-            LoadRetry();
-            var exists = _localStorage.Exists(toDoDTO.Id);
-            if (exists)
-                while (_localStorage.Exists(toDoDTO.Id))
-                    _localStorage.Remove(toDoDTO.Id);
-            try
-            {
-                _localStorage.Store(toDoDTO.Id, Convert(toDoDTO));
-            }
-            catch
-            {
-                _logger.LogDebug("Key {key} {exists} and failed when removing+adding via Store", toDoDTO.Id, (exists ? "exists" : "does not exist"));
-                //System.ArgumentException: 'An item with the same key has already been added. Key: 638014311819156398'
-            }
+            _localStorage.Store(toDoDTO.Id, Convert(toDoDTO));
             PersistRetry();
-            //_localStorage.Load();
-            LoadRetry();
-            return toDoDTO;
+            return Task.FromResult(toDoDTO);
         }
 
         /// <summary>
@@ -187,17 +119,18 @@ namespace ToDoWebApi.DAL.Services
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public void Delete(string id)
+        public Task DeleteAsync(string id)
         {
-            _localStorage.Remove(key: id);
-            PersistRetry();
-            _localStorage.Load();
+            return Task.Factory.StartNew(() => {
+                _localStorage.Remove(key: id);
+                PersistRetry();
+            });
         }
 
         /// <summary>
         /// Deletes the database with all the todo items.
         /// </summary>
         /// <returns></returns>
-        public void DeleteDatabaseAsync() => _localStorage.Destroy();
+        public Task DeleteDatabaseAsync() => Task.Factory.StartNew(() => _localStorage.Destroy());
     }
 }

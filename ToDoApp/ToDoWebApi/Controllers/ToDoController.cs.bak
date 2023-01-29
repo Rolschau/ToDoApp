@@ -27,19 +27,19 @@ namespace ToDoWebApi.Controllers
         public ToDoDTO CreateItem([FromBody] ToDoDTO item)
         {
             _logger.LogDebug("CreateItem was called at {Now}", DateTimeOffset.Now);
-            return _databaseService.Create(item);
+            return _databaseService.CreateAsync(item).Result;
         }
 
         [HttpGet]
         public List<ToDoDTO> GetAll(bool excludeDone = false) {
             _logger.LogDebug("GetAll was called at {Now}", DateTimeOffset.Now);
-            return _databaseService.Get(excludeDone);
+            return _databaseService.GetAsync(excludeDone).Result;
         }
 
         [HttpPut]
-        public void UpdateItem([FromBody] ToDoDTO item) => _databaseService.Update(item);
+        public void UpdateItem([FromBody] ToDoDTO item) => _databaseService.UpdateAsync(item);
 
         [HttpDelete("{id}")]
-        public void DeleteItem(string id) => _databaseService.Delete(id);
+        public void DeleteItem(string id) => _databaseService.DeleteAsync(id);
     }
 }

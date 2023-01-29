@@ -21,23 +21,27 @@
             </svg>
         </div>
         <div>
-            <label for="statusDone">{{getLabel('status')}}</label>
-            <select id="statusDone" v-model="todoDoneStatus">
-                <option :value="undefined">{{getLabel('statusAll')}}</option>
-                <option :value="true">{{getLabel('statusDone')}}</option>
-                <option :value="false">{{getLabel('statusNotDone')}}</option>
+            <label for="doneSelect">{{getLabel('status')}}</label>
+            <select id="doneSelect" v-model="doneStatus">
+                <option :value="-1">{{getLabel('statusAll')}}</option>
+                <option :value="1">{{getLabel('statusDone')}}</option>
+                <option :value="0">{{getLabel('statusNotDone')}}</option>
             </select>
         </div>
         <div v-if="todos" class="todos" ref="todos">
-            <div v-for="(todo, index) in todos" class="todo" :style="{ 'display': (todo.hide ? 'none' : 'flex')  }">
-                <input type="checkbox" :key="`todo_${index}`" v-model="todo.done" @@click="updateToDo(todo)" />
-                <span :class="{ 'todoDone': todo.done }">{{todo.value}}</span>
+            <div v-for="(todo, index) in alltodos" :class="{ 'todo': true, 'todoError': todo.error }" v-if="!((doneStatus==0 && todo.done) || (doneStatus==1 && !todo.done))">
+                <input type="checkbox" :key="`todo_${index}`" v-model="todo.done" @@click="doneToDo(index)" />
+                <div class="reorderTodo" :style="{ 'display': (isReordering ? 'none' : 'flex') }">
+                    <div v-if="index > 0" @@click="reorderTodo(todo, -1)">&uArr;</div>
+                    <div v-if="index < (todos.length - 1)" @@click="reorderTodo(todo, 1)">&dArr;</div>
+                </div>
+                <span :class="{ 'todoValue': true, 'todoDone': todo.done }">{{todo.value}}</span>
                 <span class="btn mybutton remove" @@click="removeTodo(todo.id)">{{getLabel('remove')}}</span>
             </div>
         </div>
         <div class="addTodoContainer">
             <input class="add" ref="newTodo" :placeholder="getLabel('writeNewTodo')" />
-            <span class="btn mybutton add" @@click="addToDo">{{getLabel('add')}}</span>
+            <span class="btn mybutton add" @@click="createToDo">{{getLabel('add')}}</span>
         </div>
         <div class="errorMessage" v-if="errorMessages">{{errorMessages}}</div>
     </div>

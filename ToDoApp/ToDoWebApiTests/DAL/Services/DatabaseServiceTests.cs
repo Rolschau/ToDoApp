@@ -5,12 +5,12 @@ using Microsoft.Extensions.Logging;
 using ToDoWebApi.Controllers;
 using Microsoft.Extensions.Logging.Abstractions;
 using ToDoWebApi.BLL.Extensions;
+using ToDoWebApi.DAL.Interfaces;
+using ToDoWebApi.DAL.Services;
+using Microsoft.Extensions.Options;
 
 namespace ToDoWebApi.DAL.Services.Tests
 {
-
-    // ToDo: it seems like test explorer does not like .net6? Try installing NUnit!?!?
-
     [TestClass()]
     public class DatabaseServiceTests
     {
@@ -23,13 +23,14 @@ namespace ToDoWebApi.DAL.Services.Tests
         {
             // setup a configuration with encryption enabled (defaults to 'false')
             // note that adding EncryptionSalt is optional, but recommended
-            var localStorageConfiguration = new LocalStorageConfiguration()
-            {
-                EnableEncryption = true,
-                EncryptionSalt = "todosalt",
-                Filename = "todotests"
-                //ToDo: consider making a separate Filename per user id eg. SSO like IdentityServer4 (OAuth/OpenID protocols, ASP.NET Core).
-            };
+            IOptions<LocalStorageConfiguration> localStorageConfigurationOption = Options.Create(
+                new LocalStorageConfiguration()
+                {
+                    EnableEncryption = true,
+                    EncryptionSalt = "todosalt",
+                    Filename = "todotests"
+                    //ToDo: consider making a separate Filename per user id eg. SSO like IdentityServer4 (OAuth/OpenID protocols, ASP.NET Core).
+                });
 
             // Logger that does nothing.
             ILogger<ToDoController> logger = new NullLogger<ToDoController>();
@@ -40,7 +41,7 @@ namespace ToDoWebApi.DAL.Services.Tests
                 logger = logFactory.CreateLogger<ToDoController>();
             }
 
-            _databaseService = new DatabaseService(localStorageConfiguration, logger);
+            _databaseService = new DatabaseService(localStorageConfigurationOption, logger);
         }
 
         [ClassCleanup]
@@ -65,7 +66,7 @@ namespace ToDoWebApi.DAL.Services.Tests
             ToDoDTO original = new() { Value = "original" };
 
             // Act
-            ToDoDTO created = _databaseService.CreateAsync(original).Result;
+            ToDoDTO created = _databaseService.Create(original);
 
             // Assert
             Assert.IsNotNull(created);
@@ -85,13 +86,13 @@ namespace ToDoWebApi.DAL.Services.Tests
             ToDoDTO original = new() { Value = "original" };
 
             // Act
-            ToDoDTO created = _databaseService.CreateAsync(original).Result;
+            ToDoDTO created = _databaseService.Create(original);
             ToDoDTO modified1 = (ToDoDTO)created.Clone();
             modified1.Done = !modified1.Done;
             ToDoDTO modified2 = created.DeepCopy();
             modified2.Order = modified2.Order = 999;
-            ToDoDTO updated1 = _databaseService.UpdateAsync(modified1).Result;
-            ToDoDTO updated2 = _databaseService.UpdateAsync(modified2).Result;
+            ToDoDTO updated1 = _databaseService.Update(modified1);
+            ToDoDTO updated2 = _databaseService.Update(modified2);
 
             // Assert
             Assert.IsNotNull(updated1);
@@ -109,9 +110,12 @@ namespace ToDoWebApi.DAL.Services.Tests
             ToDoDTO original = new() { Value = "original" };
             
             // Act
-            ToDoDTO created1 = _databaseService.CreateAsync(original).Result;
-            ToDoDTO created2 = _databaseService.CreateAsync(original).Result;
-            List<ToDoDTO> todos = _databaseService.GetAsync().Result;
+            ToDoDTO created1 = _databaseService.Create(original);
+            ToDoDTO created2 = _databaseService.Create(original);
+            ToDoDTO created3 = _databaseService.Create(original);
+            created3.Done = true;
+            _ = _databaseService.Update(created3);
+            List<ToDoDTO> todos = _databaseService.Get(excludeDone: true);
 
             // Assert
             Assert.IsNotNull(todos);
@@ -129,9 +133,9 @@ namespace ToDoWebApi.DAL.Services.Tests
             ToDoDTO original = new() { Value = "original" };
 
             // Act
-            ToDoDTO created = _databaseService.CreateAsync(original).Result;
+            ToDoDTO created = _databaseService.Create(original);
             Assert.IsNotNull(created.Id); // Added to Resolve nullable warnings in the line below.
-            ToDoDTO retrieved = _databaseService.GetAsync(created.Id).Result;
+            ToDoDTO retrieved = _databaseService.Get(created.Id);
 
             // Assert
             Assert.IsNotNull(retrieved);
@@ -147,14 +151,12 @@ namespace ToDoWebApi.DAL.Services.Tests
             ToDoDTO original = new() { Value = "original" };
 
             // Act
-            ToDoDTO created = _databaseService.CreateAsync(original).Result;
+            ToDoDTO created = _databaseService.Create(original);
             Assert.IsNotNull(created.Id); // Added to Resolve nullable warnings in the line below.
-            Task task = _databaseService.DeleteAsync(created.Id);
-            task.Wait();
-
+            _databaseService.Delete(created.Id);
+            
             // Assert
-            Assert.AreEqual(expected: true, actual: task.IsCompleted);
-            Assert.ThrowsException<ArgumentNullException>(() => _databaseService.GetAsync(created.Id));
+            Assert.ThrowsException<ArgumentNullException>(() => _databaseService.Get(created.Id));
         }
     }
 }
