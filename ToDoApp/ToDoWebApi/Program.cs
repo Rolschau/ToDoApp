@@ -1,6 +1,24 @@
 using Hanssens.Net;
-using Microsoft.Extensions.DependencyInjection;
-using ToDoWebApi.Services;
+using ToDoWebApi.BLL.Filters;
+using ToDoWebApi.DAL.Interfaces;
+using ToDoWebApi.DAL.Services;
+
+/*
+Opgavebeskrivelse
+Udvikling af en simpel todo/opgave-liste, hvor det er muligt at:
+- Se en liste med opgaver
+- Oprette en opgave
+- Markere om en opgave som værende færdig
+- Filtrere på om en opgave er færdig eller ej
+- Sortere rækkefølgen af opgaver (kun hvis det kan nås)
+Teknologierne du skal benytte:
+- Frit valg til front-end (Vi bruger selv Vue)
+- .NET Core som API
+- Frit valg til storage, men det skal være persistant server-side
+Det du primært skal have fokus på er:
+- Teknisk opbygning og kode-strukturering
+- Forsøge at separere front-end og back-end (headless)
+*/
 
 namespace ToDoWebApi
 {
@@ -10,19 +28,43 @@ namespace ToDoWebApi
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            //builder.Host.ConfigureLogging(logging =>
+            //{
+            //    // Let us hijack the logging and send it to the console
+            //    logging.ClearProviders();
+            //    logging.AddConsole();
+            //});
+            builder.Services.AddLogging(config =>
+            {
+                config.AddDebug();
+                config.AddConsole();
+            });
+
             // Add services to the container.
-            builder.Services.AddControllers();
-            //builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-            builder.Services.AddSingleton<ILocalStorageConfiguration>(
-                // setup a configuration with encryption enabled (defaults to 'false')
-                // note that adding EncryptionSalt is optional, but recommended
-                new LocalStorageConfiguration()
+            builder.Services.AddControllers(
+                options => {
+                    options.Filters.Add(typeof(UnhandledExceptionFilter));
+                }
+            );
+
+            // Define a CORS Policy, for production...
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy(name: "CorsPolicy", builder =>
                 {
-                    EnableEncryption = true,
-                    EncryptionSalt = "todosalt",
-                    Filename = "todo"
-                    //ToDo: consider making a separate Filename per user id eg. SSO like IdentityServer4 (OAuth/OpenID protocols, ASP.NET Core).
+                    builder.WithOrigins(
+                        "https://localhost:7038",
+                        "http://localhost:5038",
+                        "https://www.huskeliste.dk"
+                    )
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
                 });
+            });
+
+            builder.Services.Configure<LocalStorageConfiguration>(
+                builder.Configuration.GetSection("LocalStorageConfiguration"));
+            builder.Services.AddSingleton<ILocalStorageConfiguration, LocalStorageConfiguration>();
             builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
 
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -34,9 +76,19 @@ namespace ToDoWebApi
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
+                app.UseCors(builder =>
+                {
+                    builder
+                    .AllowAnyOrigin()
+                    .AllowAnyMethod()
+                    .AllowAnyHeader();
+                });
+
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
+            else
+                app.UseCors("CorsPolicy");
 
             app.UseHttpsRedirection();
 
@@ -48,53 +100,3 @@ namespace ToDoWebApi
         }
     }
 }
-/*
-Opgavebeskrivelse
-Udvikling af en simpel todo/opgave-liste, hvor det er muligt at:
-- (R, GET) Se en liste med opgaver
-- (C, POST) Oprette en opgave
-- (U, PUT) Markere om en opgave som værende færdig
-- (R, GET og client-side .filter) Filtrere på om en opgave er færdig eller ej
-- (U, PUT) Sortere rækkefølgen af opgaver (kun hvis det kan nås)
-Teknologierne du skal benytte:
-- Frit valg til front-end (Vi bruger selv Vue)
-- .NET Core som API
-- (sqllite?) Frit valg til storage, men det skal være persistant server-side
-Det du primært skal have fokus på er:
-- Teknisk opbygning og kode-strukturering
-- Forsøge at separere front-end og back-end (headless)
-
-
-Note:
-Brug todo record? I stedet for en todo klasse (old school)
-HUSK AT BRUGE GOD TID PÅ WebAPI'et, da det er en WEB BACKEND UDVIKLER-stilling.
-...brug deserialisering (f.eks. TodoDTO ifm. metode parameter) af (json) requests for at forhindre injection...
-...test med "-tegnet i tekster... dvs. så burde serialisering (brig en string property i en TodoDTO-klasse) til json gå fint....!?
-...in-memory database eller sqllite... initialisér det med nogle data, så siden ikke er tom fra start...
-
-ToDo: Implementer ILogger... !?
-
-
-CRUD:
-
-[Route("/todo/")]
-[POST]
-public JsonResult CreateItem([FromBody]item) //or something like this
-// Use the id from the response to add it to the front-end list.
-
-[Route("/todo/")]
-[GET]
-// get all the items
-public JsonResult GetAll()
-
-[Route("/todo/{id}")]
-[PUT]
-// replace the item
-public JsonResult UpdateItem([FromUri]int id, [FromBody]TodoDTO item) //or something like this
-
-[Route("/todo/{id}")]
-[DELETE]
-// replace the item
-public JsonResult UpdateItem([FromUri]int id) //or something like this
- 
-*/

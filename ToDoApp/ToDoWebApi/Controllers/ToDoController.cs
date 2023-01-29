@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using ToDoWebApi.Models;
-using ToDoWebApi.Services;
+using ToDoWebApi.DAL.Interfaces;
+using ToDoWebApi.BLL.Models;
 
 namespace ToDoWebApi.Controllers
 {
@@ -8,7 +8,7 @@ namespace ToDoWebApi.Controllers
     [Route("[controller]")]
     public class ToDoController : ControllerBase
     {
-        private readonly ILogger<ToDoController> _logger; //ToDo: implement logging to somewhere... and then consider logging :D
+        private readonly ILogger<ToDoController> _logger;
         private readonly IDatabaseService _databaseService;
 
         public ToDoController(ILogger<ToDoController> logger, IDatabaseService databaseService)
@@ -24,10 +24,17 @@ namespace ToDoWebApi.Controllers
         /// <param name="item"></param>
         /// <returns></returns>
         [HttpPost]
-        public ToDoDTO CreateItem([FromBody] ToDoDTO item) => _databaseService.CreateAsync(item).Result;
+        public ToDoDTO CreateItem([FromBody] ToDoDTO item)
+        {
+            _logger.LogInformation("CreateItem was called at {Now}", DateTimeOffset.Now);
+            return _databaseService.CreateAsync(item).Result;
+        }
 
         [HttpGet]
-        public IEnumerable<ToDoDTO> GetAll() => _databaseService.GetAsync().Result;
+        public List<ToDoDTO> GetAll(bool excludeDone = false, bool sortDescending = false) {
+            _logger.LogInformation("GetAll was called at {Now}", DateTimeOffset.Now);
+            return _databaseService.GetAsync(excludeDone, sortDescending).Result;
+        }
 
         [HttpPut]
         public void UpdateItem([FromBody] ToDoDTO item) => _databaseService.UpdateAsync(item);

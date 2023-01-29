@@ -3,7 +3,7 @@
     props: {
         api: {
             type: String,
-            default: "https://localhost:8000/api/todo"
+            default: "https://localhost:8000/todo"
         },
     },
     data() {
@@ -46,37 +46,60 @@
             );
         }
     },
+    /*
+    // Simple PUT request with a JSON body using fetch
+    const requestOptions = {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Vue PUT Request Example" })
+    };
+    fetch(`${this.api}/`, requestOptions)
+        .then(async response => {
+        const isJson = response.headers.get('content-type').includes('application/json');
+        const data = isJson && await response.json();
+        
+        // check for error response
+        if (!response.ok) {
+            // get error message from body or default to response status
+            const error = (data && data.message) || response.status;
+            return Promise.reject(error);
+        }
+        
+        this.todos = data;
+    })
+    .catch(error => {
+        this.errorMessage = error;
+        console.error('There was an error!', error);
+    });
+    */
     methods: {
         loadTodos() {
-            // Indlæs opgaver
-            // GET https://jasonwatmore.com/post/2020/04/30/vue-fetch-http-get-request-examples
-            console.log("ToDo: addToDo must call api GET to fetch all");
-            /*
-            // Simple PUT request with a JSON body using fetch
+            // loadTodos calls the api with GET to retrieve all todos.
+            console.log(`${this.api}/`);
             const requestOptions = {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ title: "Vue PUT Request Example" })
+                method: "GET",
+                headers: { "Content-Type": "application/json", "Origin": location.href },
             };
-            fetch(`{this.api}/`, requestOptions)
-              .then(async response => {
-              const isJson = response.headers.get('content-type').includes('application/json');
-              const data = isJson && await response.json();
-        
-              // check for error response
-              if (!response.ok) {
-                  // get error message from body or default to response status
-                  const error = (data && data.message) || response.status;
-                  return Promise.reject(error);
-              }
-        
-              this.todos = data;
-            })
-            .catch(error => {
-              this.errorMessage = error;
-              console.error('There was an error!', error);
-            });
-            */
+            fetch(`${this.api}/`, requestOptions)
+                .then(async response => {
+                    const isJson = response.headers.get('content-type').includes('application/json');
+                    const data = isJson && await response.json();
+
+                    // check for error response
+                    if (!response.ok) {
+                        debugger;
+                        // get error message from body or default to response status
+                        const error = (data && data.message) || response.status;
+                        return Promise.reject(error);
+                    }
+
+                    this.todos = data;
+                })
+                .catch(error => {
+                    debugger;
+                    this.errorMessage = error;
+                    console.error('There was an error!', error);
+                });
         },
         addToDo() {
             // Oprette en opgave
@@ -92,7 +115,7 @@
             console.log(todo);
             // Markere om en opgave som værende færdig
             // PUT https://jasonwatmore.com/post/2022/06/09/vue-fetch-http-put-request-examples
-            console.log("ToDo: addToDo must call api PUT to update done status");
+            console.log("ToDo: toggleToDo must call api PUT to update done status");
         },
         filterTodoStatus() {
             // Filtrer
@@ -114,11 +137,12 @@
         },
     },
     mounted() {
+        this.loadTodos();
         if (this.todos.length == 0)
             this.todos = [
                 {
                     id: 1,
-                    value: "Test",
+                    value: "Fake",
                     done: true
                 }];
     },
