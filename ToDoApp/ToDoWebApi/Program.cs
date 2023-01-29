@@ -1,4 +1,7 @@
 using Hanssens.Net;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using ToDoWebApi.BLL.Filters;
 using ToDoWebApi.DAL.Interfaces;
 using ToDoWebApi.DAL.Services;
@@ -39,6 +42,10 @@ namespace ToDoWebApi
                 config.AddDebug();
                 config.AddConsole();
             });
+            
+            builder.Services.Configure<LocalStorageConfiguration>(
+                builder.Configuration.GetSection("LocalStorageConfiguration")
+            );
 
             // Add services to the container.
             builder.Services.AddControllers(
@@ -62,9 +69,8 @@ namespace ToDoWebApi
                 });
             });
 
-            builder.Services.Configure<LocalStorageConfiguration>(
-                builder.Configuration.GetSection("LocalStorageConfiguration"));
-            builder.Services.AddSingleton<ILocalStorageConfiguration, LocalStorageConfiguration>();
+            //builder.Services.AddSingleton<ILocalStorageConfiguration, LocalStorageConfiguration>();
+
             builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
 
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

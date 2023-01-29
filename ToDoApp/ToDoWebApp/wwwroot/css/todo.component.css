@@ -13,24 +13,37 @@
     justify-content: center
 }
 
+svg.flag-icons:hover,
+.mybutton:hover,
+.reorderTodo div:hover,
+input:hover {
+    filter: drop-shadow(0 0 4px rgba(0,0,0,0.5));
+}
+
+.reorderTodo div[disabled] {
+    color: var(--bs-red, red);
+
+}
+
+input[type=checkbox]:hover {
+    cursor: pointer;
+}
+
 svg.flag-icons {
     width: 2.5em;
 }
 
-svg.flag-icons:hover, .btn:hover {
-    filter: drop-shadow(0 0 4px rgba(0,0,0,0.5));
+.todos .todo {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
 }
 
 .todos {
     width: 100%;
 }
-
-    .todos .todo {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between
-    }
 
 .addTodoContainer {
     display: flex;
@@ -74,6 +87,10 @@ svg.flag-icons:hover, .btn:hover {
     max-width: 90%;
 }
 
+.todoValue {
+    width: 100%;
+}
+
 .todoDone {
     text-decoration: line-through;
 }
@@ -84,4 +101,15 @@ svg.flag-icons:hover, .btn:hover {
 
 .errorMessage {
     color: var(--bs-red, --fallback-error-color);
+}
+
+.todoError {
+    background-color: var(--bs-red, --fallback-error-color);
+}
+
+.reorderTodo {
+    display: flex;
+    user-select: none;
+    cursor: pointer;
+    gap: 5px;
 }

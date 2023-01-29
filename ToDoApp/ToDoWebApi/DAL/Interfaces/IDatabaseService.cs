@@ -1,21 +1,17 @@
-﻿using Microsoft.Extensions.Options;
-using System.Linq;
-using Hanssens.Net;
-using System.Collections.Generic;
-using ToDoWebApi.BLL.Models;
+﻿using ToDoWebApi.BLL.Models;
 
 namespace ToDoWebApi.DAL.Interfaces
 {
     public interface IDatabaseService
     {
-        public Task<ToDoDTO> CreateAsync(ToDoDTO toDoDTO);
+        public ToDoDTO Create(ToDoDTO toDoDTO);
 
-        public Task<List<ToDoDTO>> GetAsync(bool excludeDone = false, bool sortDescending = false);
+        public List<ToDoDTO> Get(bool excludeDone = false);
 
-        public Task<ToDoDTO> GetAsync(string id);
+        public ToDoDTO Get(string id);
 
-        public Task<ToDoDTO> UpdateAsync(ToDoDTO toDoDTO);
+        public ToDoDTO Update(ToDoDTO toDoDTO);
 
-        public Task DeleteAsync(string id);
+        public void Delete(string id);
     }
 }
