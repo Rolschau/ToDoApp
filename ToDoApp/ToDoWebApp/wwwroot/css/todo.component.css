@@ -1,0 +1,87 @@
+:root {
+    --background-color: rgba(0,0,0,0.05);
+    --fallback-main-color: #4fc08d;
+    --fallback-error-color: red;
+    --fallback-fonts: Avenir, Helvetica, Arial, sans-serif;
+    --element-radius: 2em;
+}
+
+.languages {
+    display: flex;
+    flex-direction: row;
+    gap: 2em;
+    justify-content: center
+}
+
+svg.flag-icons {
+    width: 2.5em;
+}
+
+svg.flag-icons:hover, .btn:hover {
+    filter: drop-shadow(0 0 4px rgba(0,0,0,0.5));
+}
+
+.todos {
+    width: 100%;
+}
+
+    .todos .todo {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between
+    }
+
+.addTodoContainer {
+    display: flex;
+    flex-direction: row;
+    gap: 1em;
+}
+
+.mybutton {
+    border-color: var(--bs-green, --fallback-main-color);
+    border-radius: 2em;
+    color: var(--bs-green, --fallback-main-color);
+    padding: 0.5em 1.0em;
+}
+
+    .mybutton.remove {
+        border-color: var(--bs-red, red);
+        color: var(--bs-red, red);
+    }
+
+.todo-container input {
+    border-color: var(--bs-green, --fallback-main-color);
+    border-style: solid;
+    border-radius: 5em;
+    padding: 0.5em 1.0em;
+}
+
+.todo-container {
+    font-family: var(--bs-font-sans-serif, --fallback-fonts);
+    text-align: center;
+    color: var(--bs-green, --fallback-main-color);
+    margin: 5% 5%;
+    border-radius: 50px;
+    padding: 4em 4em;
+    background-color: var(--background-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2em;
+    width: fit-content;
+    min-width: min(400px, 90%);
+    max-width: 90%;
+}
+
+.todoDone {
+    text-decoration: line-through;
+}
+
+.todoHide {
+    display: none;
+}
+
+.errorMessage {
+    color: var(--bs-red, --fallback-error-color);
+}
